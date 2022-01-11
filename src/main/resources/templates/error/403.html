@@ -2,14 +2,11 @@
 <html xmlns="http://www.w3.org/1999/xhtml"
       xmlns:th="https://www.thymeleaf.org"
       xmlns:sec="https://www.thymeleaf.org/thymeleaf-extras-springsecurity5">
-<head>
-    <title>Spring Security SAML2</title>
-</head>
-<body style="background-color: white;">
-<h1>SAML2 Login Example with Spring Security 5.2</h1>
+<body>
 
+<h1>403 Error</h1>
 <div>
-<a th:href="@{/user/}">Go to user page.</a>
+    <span sec:authentication="name"></span> では利用できるコンテンツではありません.
 </div>
 
 <div>
@@ -17,5 +14,6 @@
         <input type="submit" value="Logout" />
     </form>
 </div>
+
 </body>
 </html>

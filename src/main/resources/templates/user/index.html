@@ -5,13 +5,9 @@
 <head>
     <title>Spring Security SAML2</title>
 </head>
-<body style="background-color: white;">
+<body style="background-color: aquamarine;">
 <h1>SAML2 Login Example with Spring Security 5.2</h1>
-
-<div>
-<a th:href="@{/user/}">Go to user page.</a>
-</div>
-
+<div>You are logged in as <span sec:authentication="name"></span></div>
 <div>
     <form th:action="@{/logout}" method="post">
         <input type="submit" value="Logout" />
