@@ -84,32 +84,17 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
         OpenSaml4AuthenticationProvider authenticationProvider = new OpenSaml4AuthenticationProvider();
         authenticationProvider.setResponseAuthenticationConverter(responseToken -> {
             // SAML2レスポンスから認証情報を生成
-
-            /*
-             以下のAuthentication生成処理は，OpenSaml4AuthenticationProvider.createDefaultResponseAuthenticationConverter()
-             からコピーしたもの（GrantedAuthorityを動的にしたいため）
-             */
-            Response response = responseToken.getResponse();
-            Saml2AuthenticationToken token = responseToken.getToken();
-            Assertion assertion = CollectionUtils.firstElement(response.getAssertions());
-            assert assertion != null;
-
-            String username = assertion.getSubject().getNameID().getValue();
-            Map<String, List<Object>> attributes = getAssertionAttributes(assertion);
-
-            DefaultSaml2AuthenticatedPrincipal principal = new DefaultSaml2AuthenticatedPrincipal(username, attributes);
-
-            String registrationId = responseToken.getToken().getRelyingPartyRegistration().getRegistrationId();
-            principal.setRelyingPartyRegistrationId(registrationId);
+            Saml2Authentication authentication = OpenSaml4AuthenticationProvider
+                    .createDefaultResponseAuthenticationConverter()
+                    .convert(responseToken);
 
             // UserIDからシステムで利用するUserDetailsを取得
-            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(username);
+            Assertion assertion = responseToken.getResponse().getAssertions().get(0);
+            String nameId = assertion.getSubject().getNameID().getValue();
+            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(nameId);
 
             // 認証情報の生成
-            Saml2Authentication authentication = new Saml2Authentication(principal, token.getSaml2Response(), userDetails.getAuthorities());
-            authentication.setDetails(userDetails);
-
-            return authentication;
+            return new LoginUserAuthentication(authentication, userDetails);
         });
 
         // user配下はSAML認証

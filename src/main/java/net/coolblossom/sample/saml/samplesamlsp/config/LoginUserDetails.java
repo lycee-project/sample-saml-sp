@@ -11,4 +11,8 @@ public class LoginUserDetails extends User {
         super(username, password, authorities);
     }
 
+    public boolean isRear() {
+        return getUsername().endsWith("_rear");
+    }
+
 }
