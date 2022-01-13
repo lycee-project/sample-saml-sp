@@ -1,11 +1,9 @@
 package net.coolblossom.sample.saml.samplesamlsp.controller;
 
 import lombok.extern.slf4j.Slf4j;
-import net.coolblossom.sample.saml.samplesamlsp.config.LoginUserAuthentication;
+import net.coolblossom.sample.saml.samplesamlsp.config.LoginUserAuthenticationToken;
 import net.coolblossom.sample.saml.samplesamlsp.config.LoginUserDetails;
-import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.RequestMapping;
 
@@ -17,7 +15,7 @@ public class UserController {
 
     @RequestMapping("/user/")
     public String user(
-            LoginUserAuthentication authentication) {
+            LoginUserAuthenticationToken authentication) {
         LoginUserDetails details = authentication.getLoginUserDetails();
         log.info("★★ access user page: username={}, isRear={} ({})",
                 details.getUsername(),

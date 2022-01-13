@@ -1,159 +1,152 @@
 package net.coolblossom.sample.saml.samplesamlsp.config;
 
-import lombok.extern.slf4j.Slf4j;
-import org.opensaml.core.xml.XMLObject;
-import org.opensaml.core.xml.schema.XSAny;
-import org.opensaml.core.xml.schema.XSBoolean;
-import org.opensaml.core.xml.schema.XSBooleanValue;
-import org.opensaml.core.xml.schema.XSDateTime;
-import org.opensaml.core.xml.schema.XSInteger;
-import org.opensaml.core.xml.schema.XSString;
-import org.opensaml.core.xml.schema.XSURI;
-import org.opensaml.saml.saml2.core.Assertion;
-import org.opensaml.saml.saml2.core.Attribute;
-import org.opensaml.saml.saml2.core.AttributeStatement;
-import org.opensaml.saml.saml2.core.Response;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.convert.converter.Converter;
+import org.springframework.core.annotation.Order;
+import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configuration.WebSecurityConfigurerAdapter;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.authority.AuthorityUtils;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.crypto.password.NoOpPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.saml2.provider.service.authentication.DefaultSaml2AuthenticatedPrincipal;
 import org.springframework.security.saml2.provider.service.authentication.OpenSaml4AuthenticationProvider;
-import org.springframework.security.saml2.provider.service.authentication.Saml2Authentication;
-import org.springframework.security.saml2.provider.service.authentication.Saml2AuthenticationToken;
 import org.springframework.security.saml2.provider.service.metadata.OpenSamlMetadataResolver;
 import org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistrationRepository;
 import org.springframework.security.saml2.provider.service.servlet.filter.Saml2WebSsoAuthenticationFilter;
 import org.springframework.security.saml2.provider.service.web.DefaultRelyingPartyRegistrationResolver;
 import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver;
 import org.springframework.security.saml2.provider.service.web.Saml2MetadataFilter;
-import org.springframework.util.CollectionUtils;
+import org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter;
+import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
+@EnableWebSecurity
+public class SecurityConfig {
 
-@Configuration
-@Slf4j
-public class SecurityConfig extends WebSecurityConfigurerAdapter {
-    @Autowired
-    RelyingPartyRegistrationRepository relyingPartyRegistrationRepository;
+    //@Configuration
+    //@Order(1)
+    public static class DummyLoginSecurityConfig extends WebSecurityConfigurerAdapter {
 
-    @Autowired
-    LoginUserDetailsService loginUserDetailsService;
+        @Autowired
+        LoginUserDetailsService loginUserDetailsService;
 
-    @Bean
-    public PasswordEncoder passwordEncoder() {
-        return NoOpPasswordEncoder.getInstance();
+        @Override
+        protected void configure(HttpSecurity http) throws Exception {
+            http.antMatcher("/dummy/")
+                    .userDetailsService(loginUserDetailsService)
+                    .formLogin()
+                    .successForwardUrl("/user/")
+            ;
+        }
     }
 
-    @Override
-    protected void configure(HttpSecurity http) throws Exception {
-        // トップページは認証なし
-        http.authorizeRequests()
-                .antMatchers("/", "/logout")
-                .permitAll();
+    @Configuration
+    @Order(2)
+    public static class SamlSecurityConfig extends WebSecurityConfigurerAdapter {
+        @Autowired
+        RelyingPartyRegistrationRepository relyingPartyRegistrationRepository;
 
-        RelyingPartyRegistrationResolver relyingPartyRegistrationResolver
-                = new DefaultRelyingPartyRegistrationResolver(relyingPartyRegistrationRepository);
+        @Autowired
+        LoginUserDetailsService loginUserDetailsService;
 
-        Saml2MetadataFilter filter = new Saml2MetadataFilter(
-                relyingPartyRegistrationResolver,
-                new OpenSamlMetadataResolver()
-        );
+        @Bean
+        public LoginResponseAuthenticationConverter loginResponseAuthenticationConverter() {
+            return new LoginResponseAuthenticationConverter(loginUserDetailsService);
+        }
 
-        // 権限の設定
-        /*
-        http.authorizeRequests()
-                .antMatchers("/manage/**").hasRole("MANAGER")
-                .antMatchers("/user/**").hasRole("USER")
-                ;
-        *
-         */
+        @Bean
+        public PasswordEncoder passwordEncoder() {
+            return NoOpPasswordEncoder.getInstance();
+        }
 
-        OpenSaml4AuthenticationProvider authenticationProvider = new OpenSaml4AuthenticationProvider();
-        authenticationProvider.setResponseAuthenticationConverter(responseToken -> {
-            // SAML2レスポンスから認証情報を生成
-            Saml2Authentication authentication = OpenSaml4AuthenticationProvider
-                    .createDefaultResponseAuthenticationConverter()
-                    .convert(responseToken);
+        @Override
+        protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+            auth.authenticationProvider(
+                    new AuthenticationProvider() {
 
-            // UserIDからシステムで利用するUserDetailsを取得
-            Assertion assertion = responseToken.getResponse().getAssertions().get(0);
-            String nameId = assertion.getSubject().getNameID().getValue();
-            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(nameId);
+                        @Override
+                        public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+                            String username = authentication.getName();
 
-            // 認証情報の生成
-            return new LoginUserAuthentication(authentication, userDetails);
-        });
 
-        // user配下はSAML認証
-        http
+                            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(username);
+                            return new DummyLoginAuthenticationToken(userDetails);
+                        }
+
+                        @Override
+                        public boolean supports(Class<?> authentication) {
+                            return DummyLoginAuthenticationToken.class.isAssignableFrom(authentication);
+                        }
+                    }
+            );
+        }
+
+        @Override
+        protected void configure(HttpSecurity http) throws Exception {
+            /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
+             * SAML認証で使う情報の設定
+             */
+            RelyingPartyRegistrationResolver relyingPartyRegistrationResolver
+                    = new DefaultRelyingPartyRegistrationResolver(relyingPartyRegistrationRepository);
+
+            Saml2MetadataFilter filter = new Saml2MetadataFilter(
+                    relyingPartyRegistrationResolver,
+                    new OpenSamlMetadataResolver()
+            );
+
+            // SAMLレスポンスを処理するProviderの設定
+            // 本処理はloginResponseAuthenticationConverterが担う
+            OpenSaml4AuthenticationProvider authenticationProvider = new OpenSaml4AuthenticationProvider();
+            authenticationProvider.setResponseAuthenticationConverter(loginResponseAuthenticationConverter());
+
+            // SAML認証の適用範囲の設定
+            http
+                // 権限設定
+                .authorizeHttpRequests()
+                    .antMatchers("/", "/logout",
+                            "/dummy/**").permitAll()
+                    .antMatchers("/user/**").hasAuthority("AUTH_USER")
+                    .antMatchers("/secure/**").hasAuthority("AUTH_ADMIN")
+                    .anyRequest().authenticated()
+                .and()
+
                 // CSRF対応・無効
                 .csrf().disable()
 
+                // フォームログインの設定
+                .formLogin(formLogin ->
+                        formLogin
+                            //.loginPage("/dummy/login")
+                            .defaultSuccessUrl("/dummy/dispatch")
+                )
+
                 // SAML認証の設定
                 .saml2Login(saml2 ->
-                        saml2.authenticationManager(new ProviderManager(authenticationProvider))
-                                .defaultSuccessUrl("/user/")
+                        saml2
+                            .authenticationManager(new ProviderManager(authenticationProvider))
+                            .defaultSuccessUrl("/user/")
                 )
-                .addFilterBefore(filter, Saml2WebSsoAuthenticationFilter.class)
-                .antMatcher("/**")
+                    .addFilterBefore(filter, Saml2WebSsoAuthenticationFilter.class)
+                    .antMatcher("/**")
 
-                .authorizeHttpRequests()
-                .antMatchers("/", "/logout").permitAll()
-                .antMatchers("/user/").hasAuthority("AUTH_USER")
-                .anyRequest()
-                .authenticated();
-    }
+                // ログアウト処理
+                .logout()
+                    .logoutRequestMatcher(new AntPathRequestMatcher("logout"))
+                    .logoutSuccessUrl("/")
+                    .deleteCookies("JSESSIONID")
+                    .invalidateHttpSession(true)
+                .and()
 
-    private static Map<String, List<Object>> getAssertionAttributes(Assertion assertion) {
-        Map<String, List<Object>> attributeMap = new LinkedHashMap<>();
-        for (AttributeStatement attributeStatement : assertion.getAttributeStatements()) {
-            for (Attribute attribute : attributeStatement.getAttributes()) {
-                List<Object> attributeValues = new ArrayList<>();
-                for (XMLObject xmlObject : attribute.getAttributeValues()) {
-                    Object attributeValue = getXmlObjectValue(xmlObject);
-                    if (attributeValue != null) {
-                        attributeValues.add(attributeValue);
-                    }
-                }
-                attributeMap.put(attribute.getName(), attributeValues);
-            }
-        }
-        return attributeMap;
-    }
 
-    private static Object getXmlObjectValue(XMLObject xmlObject) {
-        if (xmlObject instanceof XSAny) {
-            return ((XSAny) xmlObject).getTextContent();
+                // セッション管理
+                .sessionManagement()
+                    .invalidSessionUrl("/")
+            ;
         }
-        if (xmlObject instanceof XSString) {
-            return ((XSString) xmlObject).getValue();
-        }
-        if (xmlObject instanceof XSInteger) {
-            return ((XSInteger) xmlObject).getValue();
-        }
-        if (xmlObject instanceof XSURI) {
-            return ((XSURI) xmlObject).getURI();
-        }
-        if (xmlObject instanceof XSBoolean) {
-            XSBooleanValue xsBooleanValue = ((XSBoolean) xmlObject).getValue();
-            return (xsBooleanValue != null) ? xsBooleanValue.getValue() : null;
-        }
-        if (xmlObject instanceof XSDateTime) {
-            return ((XSDateTime) xmlObject).getValue();
-        }
-        return null;
     }
 }

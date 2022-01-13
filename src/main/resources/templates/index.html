@@ -11,6 +11,24 @@
 <div>
 <a th:href="@{/user/}">Go to user page.</a>
 </div>
+<div>
+    <h2>user information</h2>
+    <div th:if="${isAuthenticated}">
+        <div>
+            username: <p th:text="${name}">[name]</p>
+        </div>
+
+        <div>
+            authorities<br>
+            <ul th:each="a : ${authorities}">
+                <li th:text="${a.authority}">xx</li>
+            </ul>
+        </div>
+    </div>
+    <div th:if="${not isAuthenticated}">
+        <div>not authenticated.</div>
+    </div>
+</div>
 
 <div>
     <form th:action="@{/logout}" method="post">

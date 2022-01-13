@@ -5,8 +5,17 @@ import org.springframework.security.core.userdetails.User;
 
 import java.util.Collection;
 
+/**
+ * ログインユーザーの情報を格納するオブジェクト
+ */
 public class LoginUserDetails extends User {
 
+    /**
+     *
+     * @param username
+     * @param password
+     * @param authorities
+     */
     public LoginUserDetails(String username, String password, Collection<? extends GrantedAuthority> authorities) {
         super(username, password, authorities);
     }

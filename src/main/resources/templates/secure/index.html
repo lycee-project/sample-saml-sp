@@ -5,10 +5,9 @@
 <head>
     <title>Spring Security SAML2</title>
 </head>
-<body style="background-color: aquamarine;">
-<h1>SAML2 Login Example with Spring Security 5.2</h1>
+<body style="background-color: lightpink;">
+<h1>Secure Page (Only have AUTH_MANAGER)</h1>
 <div>You are logged in as <span sec:authentication="name"></span></div>
-<div><a th:href="@{/secure/}">goto secure page</a></div>
 <div>
     <form th:action="@{/logout}" method="post">
         <input type="submit" value="Logout" />

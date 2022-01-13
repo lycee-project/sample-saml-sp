@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.AuthorityUtils;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
@@ -14,11 +15,11 @@ import java.util.stream.Collectors;
 
 @Component
 @Slf4j
-public class LoginUserDetailsService {
+public class LoginUserDetailsService implements UserDetailsService {
     @Value("${app.admin.login.users}")
     private String adminLoginUsers;
 
-    @NonNull
+    @Override
     public LoginUserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         // ユーザー名から権限取得
         Collection<GrantedAuthority> authorities = getGrantedAuthorities(username);

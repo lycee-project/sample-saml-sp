@@ -1,0 +1,27 @@
+<!doctype html>
+<html xmlns="http://www.w3.org/1999/xhtml"
+      xmlns:th="https://www.thymeleaf.org">
+<head>
+    <title>Dummy Login</title>
+</head>
+<body style="background-color: white;">
+<h1>Dummy Login</h1>
+
+<div th:if="${param.containsKey('error')}">
+    <span style="color: red;" th:text="${param.get('error')}">
+        Error Message
+    </span>
+</div>
+<div>
+   <form th:action="@{/dummy/login}" method="POST">
+       <div>
+           ユーザーID: <input type="text" name="username" />
+       </div>
+       <div>
+           パスワード: <input type="password" name="password" />
+       </div>
+        <input type="submit" value="Login">
+   </form>
+</div>
+</body>
+</html>
