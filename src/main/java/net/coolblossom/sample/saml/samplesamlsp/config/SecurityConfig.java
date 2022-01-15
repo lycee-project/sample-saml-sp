@@ -37,10 +37,11 @@ public class SecurityConfig {
 
         @Override
         protected void configure(HttpSecurity http) throws Exception {
-            http.antMatcher("/dummy/")
+            http.antMatcher("/dummy/**")
                     .userDetailsService(loginUserDetailsService)
                     .formLogin()
-                    .successForwardUrl("/user/")
+                    .loginPage("/dummy/login")
+                    .successForwardUrl("/dummy/dispatch")
             ;
         }
     }
@@ -121,7 +122,7 @@ public class SecurityConfig {
                 // フォームログインの設定
                 .formLogin(formLogin ->
                         formLogin
-                            //.loginPage("/dummy/login")
+                            .loginPage("/dummy/login")
                             .defaultSuccessUrl("/dummy/dispatch")
                 )
 
