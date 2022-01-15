@@ -6,7 +6,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.core.annotation.Order;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.ProviderManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -22,18 +21,44 @@ import org.springframework.security.saml2.provider.service.servlet.filter.Saml2W
 import org.springframework.security.saml2.provider.service.web.DefaultRelyingPartyRegistrationResolver;
 import org.springframework.security.saml2.provider.service.web.RelyingPartyRegistrationResolver;
 import org.springframework.security.saml2.provider.service.web.Saml2MetadataFilter;
-import org.springframework.security.web.authentication.ui.DefaultLoginPageGeneratingFilter;
 import org.springframework.security.web.util.matcher.AntPathRequestMatcher;
 
 @EnableWebSecurity
 public class SecurityConfig {
 
-    //@Configuration
-    //@Order(1)
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return NoOpPasswordEncoder.getInstance();
+    }
+
+    @Configuration
+    @Order(1)
     public static class DummyLoginSecurityConfig extends WebSecurityConfigurerAdapter {
 
         @Autowired
         LoginUserDetailsService loginUserDetailsService;
+
+        @Override
+        protected void configure(AuthenticationManagerBuilder auth) throws Exception {
+            auth.authenticationProvider(
+                    new AuthenticationProvider() {
+
+                        @Override
+                        public Authentication authenticate(Authentication authentication) throws AuthenticationException {
+                            String username = authentication.getName();
+
+
+                            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(username);
+                            return new DummyLoginAuthenticationToken(userDetails);
+                        }
+
+                        @Override
+                        public boolean supports(Class<?> authentication) {
+                            return DummyLoginAuthenticationToken.class.isAssignableFrom(authentication);
+                        }
+                    }
+            );
+        }
 
         @Override
         protected void configure(HttpSecurity http) throws Exception {
@@ -60,33 +85,6 @@ public class SecurityConfig {
             return new LoginResponseAuthenticationConverter(loginUserDetailsService);
         }
 
-        @Bean
-        public PasswordEncoder passwordEncoder() {
-            return NoOpPasswordEncoder.getInstance();
-        }
-
-        @Override
-        protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-            auth.authenticationProvider(
-                    new AuthenticationProvider() {
-
-                        @Override
-                        public Authentication authenticate(Authentication authentication) throws AuthenticationException {
-                            String username = authentication.getName();
-
-
-                            LoginUserDetails userDetails = loginUserDetailsService.loadUserByUsername(username);
-                            return new DummyLoginAuthenticationToken(userDetails);
-                        }
-
-                        @Override
-                        public boolean supports(Class<?> authentication) {
-                            return DummyLoginAuthenticationToken.class.isAssignableFrom(authentication);
-                        }
-                    }
-            );
-        }
-
         @Override
         protected void configure(HttpSecurity http) throws Exception {
             /* * * * * * * * * * * * * * * * * * * * * * * * * * * * * * *
@@ -109,8 +107,6 @@ public class SecurityConfig {
             http
                 // 権限設定
                 .authorizeHttpRequests()
-                    .antMatchers("/", "/logout",
-                            "/dummy/**").permitAll()
                     .antMatchers("/user/**").hasAuthority("AUTH_USER")
                     .antMatchers("/secure/**").hasAuthority("AUTH_ADMIN")
                     .anyRequest().authenticated()
@@ -118,13 +114,6 @@ public class SecurityConfig {
 
                 // CSRF対応・無効
                 .csrf().disable()
-
-                // フォームログインの設定
-                .formLogin(formLogin ->
-                        formLogin
-                            .loginPage("/dummy/login")
-                            .defaultSuccessUrl("/dummy/dispatch")
-                )
 
                 // SAML認証の設定
                 .saml2Login(saml2 ->
@@ -137,7 +126,8 @@ public class SecurityConfig {
 
                 // ログアウト処理
                 .logout()
-                    .logoutRequestMatcher(new AntPathRequestMatcher("logout"))
+                    .logoutRequestMatcher(
+                            new AntPathRequestMatcher("/logout"))
                     .logoutSuccessUrl("/")
                     .deleteCookies("JSESSIONID")
                     .invalidateHttpSession(true)
