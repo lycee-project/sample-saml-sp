@@ -62,7 +62,11 @@ public class SecurityConfig {
 
         @Override
         protected void configure(HttpSecurity http) throws Exception {
-            http.antMatcher("/dummy/**")
+            http
+                    .authorizeRequests()
+                    .antMatchers("/", "/logout").permitAll()
+                    .and()
+                    .antMatcher("/dummy/**")
                     .userDetailsService(loginUserDetailsService)
                     .formLogin()
                     .loginPage("/dummy/login")
@@ -107,6 +111,7 @@ public class SecurityConfig {
             http
                 // 権限設定
                 .authorizeHttpRequests()
+                    .antMatchers("/", "/logout").permitAll()
                     .antMatchers("/user/**").hasAuthority("AUTH_USER")
                     .antMatchers("/secure/**").hasAuthority("AUTH_ADMIN")
                     .anyRequest().authenticated()

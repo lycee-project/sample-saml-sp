@@ -32,12 +32,15 @@ SAML認証とフォーム認証の設定やURLの認証・認可設定が含ま�
 このクラスに認証したユーザ名や認証情報を設定する．  
 Controllerは，基本的にこのクラスを認証情報として処理する．
 ```java
+@Controller
+class SomeController {
   @RequestMapping("/")
   public String index(
     @AuthenticationPrincipal LoginUserDetails loginUserDetails  // 認証情報の取得
   ) {
     ...
   }
+}
 ```
 
 ### LoginUserDetailsService

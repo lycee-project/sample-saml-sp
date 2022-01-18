@@ -31,4 +31,5 @@ spring:
               singlesignon:
                 sign-request: false
                 url: http://localhost:8081/sample-idp/saml/idp/select
+                binding: POST
               metadata-uri: http://localhost:8081/sample-idp/saml/idp/metadata
